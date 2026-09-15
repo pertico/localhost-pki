@@ -1,0 +1,13 @@
+{
+  "CN": "locahost CFSSL Root CA",
+  "key": {
+    "algo": "rsa",
+    "size": 4096
+  },
+  "names": [
+  ],
+  "ca": {
+    "expiry": "8760h"
+  }
+}
+

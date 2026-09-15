@@ -1,0 +1,7 @@
+{
+  "CN": "localhost CFSSL Caddy Intermediate CA",
+  "key": {
+    "algo": "rsa",
+    "size": 4096
+  }
+}

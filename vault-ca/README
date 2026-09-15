@@ -1,0 +1,89 @@
+# Initialize DEV Server
+
+    $ vault server -dev -dev-root-token-id root
+    $ export VAULT_ADDR=http://localhost:8200
+    $ export VAULT_TOKEN=root
+
+# localhost Vault Root CA
+
+    $ vault secrets enable -path=root-ca pki 
+    $ vault secrets tune -max-lease-ttl=8760h root-ca
+    $ vault write root-ca/config/urls \
+        issuing_certificates="$VAULT_ADDR/v1/root-ca/ca" \
+        crl_distribution_points="$VAULT_ADDR/v1/root-ca/crl"
+
+    $ vault write -field=certificate root-ca/root/generate/internal \
+        common_name="localhost Vault Root CA" \
+        issuer_name="root-ca" \
+        ttl=8760h \
+        key_type=rsa key_bits=4096 \
+        max_path_length=2 > cert/root-ca.crt
+
+# Intermediate CA
+
+    $ vault secrets enable -path=intermediate-ca pki
+    $ vault secrets tune -max-lease-ttl=4380h intermediate-ca
+    $ vault write intermediate-ca/config/urls \
+        issuing_certificates="$VAULT_ADDR/v1/intermediate-ca/ca" \
+        crl_distribution_points="$VAULT_ADDR/v1/intermediate-ca/crl"
+    
+
+    $ vault write -format=json intermediate-ca/intermediate/generate/internal \
+        common_name="localhost Vault Intermediate CA" \
+        key_type=rsa key_bits=4096 \
+        | jq -r '.data.csr' > csr/intermediate-ca.csr
+
+    $ vault write -format=json root-ca/root/sign-intermediate \
+        issuer_ref="root-ca" \
+        csr=@csr/intermediate-ca.csr \
+        format=pem_bundle ttl="4380h" \
+        | jq -r '.data.certificate' > cert/intermediate-ca.pem
+
+    $ vault write intermediate-ca/intermediate/set-signed certificate=@cert/intermediate-ca.pem
+
+
+# localhost Vault Intermediate CA 
+
+    $ vault secrets enable pki
+    $ vault write pki/config/urls \
+        issuing_certificates="$VAULT_ADDR/v1/pki/ca" \
+        crl_distribution_points="$VAULT_ADDR/v1/pki/crl"
+
+
+    $ vault write -format=json pki/intermediate/generate/internal \
+        common_name="localhost Vault Intermediate CA" \
+        key_type=rsa key_bits=4096 \
+        | jq -r '.data.csr' > csr/vault-intermediate-ca.csr
+
+    # Signed by cfssl
+
+    $ cfssl sign \
+        -ca ../local-cfssl-ca/cert/intermediate-ca.pem -ca-key ../local-cfssl-ca/key/intermediate-ca-key.pem \
+        -config ../local-cfssl-ca/config/ca-config.json -profile intermediate-2 csr/vault-intermediate-ca.csr \
+        | cfssljson -bare vault-intermediate-ca && \
+      mv vault-intermediate-ca.pem cert/ && rm vault-intermediate-ca.csr && \
+      cat cert/vault-intermediate-ca.pem ../local-cfssl-ca/cert/intermediate-ca.pem ../local-cfssl-ca/cert/root-ca.pem > cert/vault-intermediate-bundle.pem
+      
+    # Signed by certstrap
+
+    $ cp csr/vault-intermediate-ca.csr ../certstrap-ca/out
+    $ certstrap sign "localhost Vault Intermediate CA" \
+      --intermediate \
+      --expires "3 months" \
+      --CA "localhost certstrap Intermediate CA" \
+      --csr "./out/vault-intermediate-ca.csr"
+    $ cat ../certstrap-ca/out/localhost_Vault_Intermediate_CA.crt \
+        ../certstrap-ca/out/localhost_certstrap_Intermediate_CA.crt \
+        ../certstrap-ca/out/localhost_certstrap_Root_CA.crt \
+        >> cert/vault-intermediate-bundle.pem
+    $ vault write pki/intermediate/set-signed certificate=@cert/vault-intermediate-bundle.pem
+
+# localhost Certificate
+
+    $ vault write pki/roles/localhost \
+        issuer_ref="$(vault read -field=default pki/config/issuers)" \
+        allowed_domains="localhost" \
+        allow_subdomains=true \
+        max_ttl="720h"
+
+    $ vault write pki/issue/localhost common_name="localhost" ttl="24h"

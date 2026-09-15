@@ -1,0 +1,23 @@
+https://github.com/square/certstrap/releases/download/v1.3.0/certstrap-linux-amd64
+https://github.com/square/certstrap/releases/download/v1.3.0/certstrap-windows-amd64
+
+# localhost certstrap Root CA
+
+  $ certstrap init `
+    --common-name "localhost certstrap Root CA" `
+    --expires "1 year" `
+    --key-bits 4096 --path-length 2 `
+    --passphrase ""
+
+# localhost certstrap Intermediate CA
+
+  $ certstrap request-cert `
+      --common-name "localhost certstrap Intermediate CA" `
+      --key-bits 4096 `
+      --passphrase ""
+
+  $ certstrap sign "localhost certstrap Intermediate CA" `
+      --intermediate `
+      --expires "6 months" `
+      --path-length 1 `
+      --CA "localhost certstrap Root CA"

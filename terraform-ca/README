@@ -1,0 +1,25 @@
+
+$ step certificate create "playground CA" \
+    root-ca.crt root-ca.key \
+    --kty=RSA \
+    --size=4096 \
+    --profile=root-ca
+
+$ step certificate create "playground intermediate CA" \
+    intermediate-ca.crt intermediate-ca.key \
+    --profile intermediate-ca --ca ./root-ca.crt --ca-key ./root-ca.key    
+
+$ step ca init \
+    --deployment-type=standalone \
+    --name="localhost CA" \
+    --dns="localhost,127.0.0.1" \
+    --address="127.0.0.1:8443" \
+    --provisioner="me@acme.com" \
+    --root=root-ca.crt \
+    --key=root-ca.key \
+    --key-password-file=./.password \
+    --password-file=./.password \
+    --provisioner-password-file=./.password
+
+
+spawn /usr/bin/step ca init --deployment-type=standalone --name=$name --dns=$fqdn --address=$listen --provisioner=$provisioner --password-file=/etc/step-ca/password.txt --provisioner-password-file=/etc/step-ca/password.txt --with-ca-url=$url --root=/etc/ssl/ca/ca-crt --key=/etc/ssl/ca/ca-key

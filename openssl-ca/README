@@ -1,0 +1,28 @@
+#
+
+CANAME="localhost_openssl_Root_CA"
+
+mkdir ./out/ && cd ./out
+
+openssl genrsa -out $CANAME.key 4096
+openssl req -x509 -new -nodes \
+  -key localhost_openssl_Root_CA.key \
+  -sha256 -days 365 \
+  -subj "/CN=localhost openssl Root CA" \
+  -addext "basicConstraints=critical,CA:TRUE" \
+  -addext "keyUsage=critical,keyCertSign,cRLSign" \
+  -out localhost_openssl_Root_CA.crt
+
+openssl genrsa -out "localhost_openssl_Intermediate_CA".key 4096
+openssl req -new \
+  -key localhost_openssl_Intermediate_CA.key \
+  -subj "/CN=localhost openssl Intermediate CA" \
+  -out localhost_openssl_Intermediate_CA.csr
+openssl x509 -req \
+  -in localhost_openssl_Intermediate_CA.csr \
+  -CA localhost_openssl_Root_CA.crt \
+  -CAkey localhost_openssl_Root_CA.key \
+  -CAcreateserial \
+  -days 180 -sha256 \
+  -extfile ../intermediate.ext \
+  -out localhost_openssl_Intermediate_CA.crt
