@@ -1,7 +1,7 @@
 {
   "signing": {
     "default": {
-      "expiry": "4380h"
+      "expiry": "8760h"
     },
     "profiles": {
       "intermediate": {
@@ -11,7 +11,7 @@
           "cert sign",
           "crl sign"
         ],
-        "expiry": "4380h",
+        "expiry": "6570h",
         "ca_constraint": {
           "is_ca": true,
           "max_path_len": 1
@@ -37,7 +37,7 @@
           "server auth",
           "client auth"
         ],
-        "expiry": "2160h"
+        "expiry": "720h"
       }      
     }
   }
