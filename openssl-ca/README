@@ -40,7 +40,7 @@ openssl x509 -req \
 
 # --------------------------------------
 #  Root CA
-mkdir -p ./rootca/{certs,crl,newcerts,private}
+mkdir -p ./rootca/{certs,csr,crl,newcerts,private}
 chmod 700 ./rootca/private
 touch ./rootca/index.txt
 echo 1000 > ./rootca/serial
@@ -70,60 +70,33 @@ chmod 400 ./intermediate/private/intermediate.key
 
 openssl req -config ./ca.conf -new -sha256 \
       -key ./intermediate/private/intermediate.key \
-      -out ./intermediate/csr/intermediate.csr \
+      -out ./rootca/csr/intermediate.csr \
       -subj "/CN=localhost openssl Intermediate CA"
 
 openssl ca -config ./ca.conf -name root_ca \
       -extensions v3_intermediate_ca \
       -days 365 -notext -md sha256 \
-      -in ./intermediate/csr/intermediate.csr \
-      -out ./intermediate/certs/intermediate.crt
-chmod 444 ./intermediate/certs/intermediate.crt
+      -in ./rootca/csr/intermediate.csr \
+      -out ./rootca/certs/intermediate.crt
+chmod 444 ./rootca/certs/intermediate.crt
+cp ./rootca/certs/intermediate.crt ./intermediate/certs/
 
 openssl verify -CAfile ./rootca/certs/rootca.crt \
       ./intermediate/certs/intermediate.crt
 
-# WEB Intermediate CA
-mkdir -p ./subca_web/{certs,crl,csr,newcerts,private}
-chmod 700 ./subca_web/private
-touch ./subca_web/index.txt
-echo 1000 > ./subca_web/serial
-echo 1000 > ./subca_web/crlnumber
-
-openssl genrsa -out ./subca_web/private/subca_web.key 4096
-chmod 400 ./subca_web/private/subca_web.key
-
-openssl req -config ./ca.conf -new -sha256 \
-      -key ./subca_web/private/subca_web.key \
-      -out ./subca_web/csr/subca_web.csr \
-      -subj "/CN=localhost openssl WEB Intermediate CA"
-
-openssl ca -config ./ca.conf -name intermediate_ca \
-      -extensions v3_sub_ca \
-      -days 180 -notext -md sha256 \
-      -in ./subca_web/csr/subca_web.csr \
-      -out ./subca_web/certs/subca_web.crt
-chmod 444 ./subca_web/certs/subca_web.crt
-
-# Crear la cadena intermedia temporal para validación
-cat ./rootca/certs/rootca.crt ./intermediate/certs/intermediate.crt > /tmp/chain_test.crt
-openssl verify -CAfile /tmp/chain_test.crt ./subca_web/certs/subca_web.crt
-rm /tmp/chain_test.crt
-
 # Wildcard localhost
-
-openssl genrsa -out ./subca_web/private/localhost.key 4096
-chmod 400 ./subca_web/private/localhost.key
+openssl genrsa -out ./intermediate/private/localhost.key 4096
+chmod 400 ./intermediate/private/localhost.key
 
 openssl req -config ./ca.conf -new -sha256 \
-      -key ./subca_web/private/localhost.key \
+      -key ./intermediate/private/localhost.key \
       -subj "/CN=localhost" \
-      -out ./subca_web/csr/server.csr
+      -out ./intermediate/csr/localhost.csr
 
 openssl ca -config ./ca.conf \
-      -name sub_ca_web \
+      -name intermediate_ca \
       -extensions server_san_cert \
       -days 30 -notext -md sha256 \
-      -in ./subca_web/csr/server.csr \
-      -out ./subca_web/certs/server.crt
-chmod 444 ./subca_web/certs/server.crt
+      -in ./intermediate/csr/localhost.csr \
+      -out ./intermediate/certs/localhost.crt
+chmod 444 ./intermediate/certs/localhost.crt
