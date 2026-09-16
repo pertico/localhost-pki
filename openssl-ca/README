@@ -1,4 +1,4 @@
-# Root + Intermediate CA 
+# Root + Intermediate CA
 
 openssl genrsa -out localhost_openssl_Root_CA.key 4096
 openssl req -x509 -new -nodes \
@@ -23,7 +23,22 @@ openssl x509 -req \
   -extfile ../intermediate.ext \
   -out localhost_openssl_Intermediate_CA.crt
 
+openssl genrsa -out "localhost_openssl_WEB_Intermediate_CA".key 4096
+openssl req -new \
+  -key localhost_openssl_WEB_Intermediate_CA.key \
+  -subj "/CN=localhost openssl WEB Intermediate CA" \
+  -out localhost_openssl_WEB_Intermediate_CA.csr
+openssl x509 -req \
+  -in localhost_openssl_Intermediate_CA.csr \
+  -CA localhost_openssl_Root_CA.crt \
+  -CAkey localhost_openssl_Root_CA.key \
+  -CAcreateserial \
+  -days 90 -sha256 \
+  -extfile ../intermediate-2.ext \
+  -out localhost_openssl_WEB_Intermediate_CA.crt
 
+
+# --------------------------------------
 #  Root CA
 mkdir -p ./rootca/{certs,crl,newcerts,private}
 chmod 700 ./rootca/private
@@ -97,21 +112,18 @@ rm /tmp/chain_test.crt
 
 # Wildcard localhost
 
-mkdir -p ./servers/localhost
-
-openssl genrsa -out ./servers/localhost/server.key 4096
-chmod 400 ./servers/localhost/server.key
+openssl genrsa -out ./subca_web/private/localhost.key 4096
+chmod 400 ./subca_web/private/localhost.key
 
 openssl req -config ./ca.conf -new -sha256 \
-      -key ./servers/localhost/server.key \
+      -key ./subca_web/private/localhost.key \
       -subj "/CN=localhost" \
-      -out ./servers/localhost/server.csr
+      -out ./subca_web/csr/server.csr
 
 openssl ca -config ./ca.conf \
       -name sub_ca_web \
       -extensions server_san_cert \
       -days 30 -notext -md sha256 \
-      -in ./servers/localhost/server.csr \
-      -out ./servers/localhost/server.crt
-
-chmod 444 ./servers/localhost/server.crt
+      -in ./subca_web/csr/server.csr \
+      -out ./subca_web/certs/server.crt
+chmod 444 ./subca_web/certs/server.crt
