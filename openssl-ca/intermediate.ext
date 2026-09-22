@@ -1,2 +1,0 @@
-basicConstraints = critical, CA:TRUE, pathlen:1
-keyUsage         = critical, keyCertSign, cRLSign
