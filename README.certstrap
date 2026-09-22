@@ -1,0 +1,29 @@
+## Certstrap
+
+### localhost Root CA
+``` shell
+  certstrap init \
+    --common-name "localhost Root CA" \
+    --organizational-unit "certstrap" \
+    --organization "localhost" \
+    --expires "1 year" \
+    --key-bits 4096 \
+    --exclude-path-length \
+    --passphrase ""
+```
+
+### localhost Intermediate CA
+``` shell
+  certstrap request-cert \
+      --common-name "localhost Intermediate CA" \
+      --organizational-unit "certstrap" \
+      --organization "localhost" \
+      --key-bits 4096 \
+      --passphrase ""
+
+  certstrap sign "localhost Intermediate CA" \
+      --intermediate \
+      --expires "6 months" \
+      --path-length 1 \
+      --CA "localhost Root CA"
+``` 
